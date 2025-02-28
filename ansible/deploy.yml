@@ -1,0 +1,9 @@
+- name: Deploy Scientific Calculator
+  hosts: servers
+  become: true
+  tasks:
+    - name: Pull Docker Image
+      command: docker pull your-dockerhub-username/scientific-calculator
+    - name: Run Container
+      command: docker run -d --name calculator your-dockerhub-username/scientific-calculator
+
