@@ -1,30 +1,44 @@
 pipeline {
     agent any
+    environment {
+        DOCKER_IMAGE_NAME = 'scientific-calculator'
+        GITHUB_REPO_URL = ‘https://github.com/ChiragDate/Scientific_Calculator’
+    }
     stages {
-        stage('Clone Repository') {
+        stage('Checkout') {
             steps {
-                git 'https://github.com/your-username/ScientificCalculator.git'
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/master']],
+                    userRemoteConfigs: [[url: "${GITHUB_REPO_URL}"]]
+                ])
             }
         }
         stage('Build') {
             steps {
-                sh 'mvn package'
+                sh 'mvn clean package'
             }
         }
-        stage('Test') {
+        stage('Build Docker Image') {
             steps {
-                sh 'mvn test'
+                script {
+                    docker.build("${DOCKER_IMAGE_NAME}", ".")
+                }
             }
         }
-        stage('Docker Build & Push') {
+        stage('Push Docker Image') {
             steps {
-                sh 'docker build -t your-dockerhub-username/scientific-calculator .'
-                sh 'docker push your-dockerhub-username/scientific-calculator'
+                script {
+                    docker.withRegistry('', 'DockerHubCred') {
+                        sh "docker tag ${DOCKER_IMAGE_NAME} chiragdate/scientificcalculator:latest"
+                        sh "docker push chiragdate/scientificcalculator:latest"
+                    }
+                }
             }
         }
-        stage('Notify') {
+        stage('Deploy with Ansible') {
             steps {
-                sh 'curl -X POST -H "Content-Type: application/json" -d \'{"text":" New version is deployed!"}\' https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX'
+                sh 'ansible-playbook -i inventory deploy.yml'
             }
         }
     }
